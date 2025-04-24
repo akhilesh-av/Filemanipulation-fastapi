@@ -1,3 +1,5 @@
+import json
+import tempfile
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
@@ -59,7 +61,9 @@ async def merge_pdfs(file_1: UploadFile = File(...), file_2: UploadFile = File(.
         merger.write(output_path)
         merger.close()
 
-        return FileResponse(output_path, filename=output_filename, media_type='application/pdf')
+        return FileResponse(
+            output_path, filename=output_filename, media_type="application/pdf"
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -70,7 +74,6 @@ async def merge_pdfs(file_1: UploadFile = File(...), file_2: UploadFile = File(.
             os.remove(file_1_path)
         if os.path.exists(file_2_path):
             os.remove(file_2_path)
-
 
 
 @app.post("/merge_docx/")
@@ -97,7 +100,11 @@ async def merge_docx(file_1: UploadFile = File(...), file_2: UploadFile = File(.
 
         merged_document.save(output_path)
 
-        return FileResponse(output_path, filename=output_filename, media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        return FileResponse(
+            output_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -110,9 +117,12 @@ async def merge_docx(file_1: UploadFile = File(...), file_2: UploadFile = File(.
             os.remove(file_2_path)
 
 
-
 @app.post("/merge_img/")
-async def merge_img(file_1: UploadFile = File(...), file_2: UploadFile = File(...), side_by_side: Optional[bool] = Form(True)):
+async def merge_img(
+    file_1: UploadFile = File(...),
+    file_2: UploadFile = File(...),
+    side_by_side: Optional[bool] = Form(True),
+):
     try:
         # Define paths in the root directory
         root_dir = os.path.dirname(os.path.abspath(__file__))
@@ -145,7 +155,9 @@ async def merge_img(file_1: UploadFile = File(...), file_2: UploadFile = File(..
 
         merged_image.save(output_path)
 
-        return FileResponse(output_path, filename=output_filename, media_type='image/png')
+        return FileResponse(
+            output_path, filename=output_filename, media_type="image/png"
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -156,8 +168,6 @@ async def merge_img(file_1: UploadFile = File(...), file_2: UploadFile = File(..
             os.remove(file_1_path)
         if os.path.exists(file_2_path):
             os.remove(file_2_path)
-
-
 
 
 @app.post("/split_pdf/")
@@ -171,7 +181,7 @@ async def split_pdf(file: UploadFile = File(...)):
         pdf_reader = PdfReader(pdf_stream)
 
         zip_stream = io.BytesIO()
-        with zipfile.ZipFile(zip_stream, 'w') as zip_file:
+        with zipfile.ZipFile(zip_stream, "w") as zip_file:
             for page_number in range(len(pdf_reader.pages)):
                 pdf_writer = PdfWriter()
                 pdf_writer.add_page(pdf_reader.pages[page_number])
@@ -185,17 +195,20 @@ async def split_pdf(file: UploadFile = File(...)):
 
         zip_stream.seek(0)
 
-        return StreamingResponse(zip_stream, media_type="application/zip", headers={"Content-Disposition": "attachment; filename=split_pages.zip"})
+        return StreamingResponse(
+            zip_stream,
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=split_pages.zip"},
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-
-
 @app.post("/trim_pdf/")
-async def trim_pdf(file: UploadFile = File(...), start_page: int = Form(...), end_page: int = Form(...)):
+async def trim_pdf(
+    file: UploadFile = File(...), start_page: int = Form(...), end_page: int = Form(...)
+):
     try:
         # Read the uploaded file into a BytesIO object
         file_content = await file.read()
@@ -206,7 +219,10 @@ async def trim_pdf(file: UploadFile = File(...), start_page: int = Form(...), en
         total_pages = len(pdf_reader.pages)
 
         if start_page < 1 or end_page > total_pages or start_page > end_page:
-            raise HTTPException(status_code=400, detail=f"Please provide valid page numbers between 1 and {total_pages}.")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Please provide valid page numbers between 1 and {total_pages}.",
+            )
 
         pdf_writer = PdfWriter()
 
@@ -217,11 +233,14 @@ async def trim_pdf(file: UploadFile = File(...), start_page: int = Form(...), en
         pdf_writer.write(trimmed_pdf_stream)
         trimmed_pdf_stream.seek(0)
 
-        return StreamingResponse(trimmed_pdf_stream, media_type='application/pdf', headers={"Content-Disposition": "attachment; filename=trimmed_output.pdf"})
+        return StreamingResponse(
+            trimmed_pdf_stream,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=trimmed_output.pdf"},
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.post("/flatten_pdf/")
@@ -237,18 +256,23 @@ async def flatten_pdf(file: UploadFile = File(...)):
 
         for page in pdf_reader.pages:
             pdf_writer.add_page(page)
-            if '/Annots' in page:
-                page['/Annots'] = []
+            if "/Annots" in page:
+                page["/Annots"] = []
 
         flattened_pdf_stream = io.BytesIO()
         pdf_writer.write(flattened_pdf_stream)
         flattened_pdf_stream.seek(0)
 
-        return StreamingResponse(flattened_pdf_stream, media_type='application/pdf', headers={"Content-Disposition": "attachment; filename=flattened_output.pdf"})
+        return StreamingResponse(
+            flattened_pdf_stream,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "attachment; filename=flattened_output.pdf"
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.post("/add_watermark/")
@@ -288,11 +312,16 @@ async def add_watermark(file: UploadFile = File(...), watermark_text: str = Form
         pdf_writer.write(output_stream)
         output_stream.seek(0)
 
-        return StreamingResponse(output_stream, media_type='application/pdf', headers={"Content-Disposition": "attachment; filename=watermarked_output.pdf"})
+        return StreamingResponse(
+            output_stream,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "attachment; filename=watermarked_output.pdf"
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.post("/add_page_numbers/")
@@ -328,7 +357,11 @@ async def add_page_numbers(file: UploadFile = File(...)):
         pdf_writer.write(output_stream)
         output_stream.seek(0)
 
-        return StreamingResponse(output_stream, media_type='application/pdf', headers={"Content-Disposition": "attachment; filename=numbered_output.pdf"})
+        return StreamingResponse(
+            output_stream,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=numbered_output.pdf"},
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -338,7 +371,10 @@ async def add_page_numbers(file: UploadFile = File(...)):
 async def rotate_pdf(file: UploadFile = File(...), rotation_angle: int = Form(...)):
     try:
         if rotation_angle not in [90, 180, 270]:
-            raise HTTPException(status_code=400, detail="Invalid rotation angle. Please use 90, 180, or 270 degrees.")
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid rotation angle. Please use 90, 180, or 270 degrees.",
+            )
 
         # Read the uploaded file into a BytesIO object
         file_content = await file.read()
@@ -355,13 +391,20 @@ async def rotate_pdf(file: UploadFile = File(...), rotation_angle: int = Form(..
         pdf_writer.write(output_stream)
         output_stream.seek(0)
 
-        return StreamingResponse(output_stream, media_type='application/pdf', headers={"Content-Disposition": "attachment; filename=rotated_output.pdf"})
+        return StreamingResponse(
+            output_stream,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=rotated_output.pdf"},
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/delete_pdf_page/")
-async def delete_pdf_page(file: UploadFile = File(...), page_to_delete: int = Form(...)):
+async def delete_pdf_page(
+    file: UploadFile = File(...), page_to_delete: int = Form(...)
+):
     try:
         # Read the uploaded file into a BytesIO object
         file_content = await file.read()
@@ -371,7 +414,10 @@ async def delete_pdf_page(file: UploadFile = File(...), page_to_delete: int = Fo
         num_pages = len(pdf_reader.pages)
 
         if page_to_delete < 1 or page_to_delete > num_pages:
-            raise HTTPException(status_code=400, detail=f"Invalid page number. Please enter a number between 1 and {num_pages}.")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid page number. Please enter a number between 1 and {num_pages}.",
+            )
 
         page_index_to_delete = page_to_delete - 1
         pdf_writer = PdfWriter()
@@ -384,17 +430,24 @@ async def delete_pdf_page(file: UploadFile = File(...), page_to_delete: int = Fo
         pdf_writer.write(output_stream)
         output_stream.seek(0)
 
-        return StreamingResponse(output_stream, media_type='application/pdf', headers={"Content-Disposition": "attachment; filename=updated_output.pdf"})
+        return StreamingResponse(
+            output_stream,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=updated_output.pdf"},
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-    
+
+
 @app.post("/pdf_to_excel/")
 async def pdf_to_excel(file: UploadFile = File(...)):
     try:
         all_text = []
-        with pdfplumber.open(await file.read()) as pdf:
+        file_content = await file.read()
+
+        # Wrap the bytes content in a BytesIO object
+        with pdfplumber.open(io.BytesIO(file_content)) as pdf:
             for page in pdf.pages:
                 tables = page.extract_tables()
                 for table in tables:
@@ -408,15 +461,22 @@ async def pdf_to_excel(file: UploadFile = File(...)):
         result_df = pd.concat(all_text, ignore_index=True)
 
         excel_buffer = io.BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            result_df.to_excel(writer, index=False, sheet_name='Sheet1')
+        with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+            result_df.to_excel(writer, index=False, sheet_name="Sheet1")
 
         excel_buffer.seek(0)
 
-        return StreamingResponse(excel_buffer, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": "attachment; filename=converted_output.xlsx"})
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=converted_output.xlsx"
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/excel_to_pdf/")
 async def excel_to_pdf(file: UploadFile = File(...)):
@@ -432,7 +492,9 @@ async def excel_to_pdf(file: UploadFile = File(...)):
         col_width = width / (len(excel_data.columns) + 1)
 
         pdf.setFillColor(lightgrey)
-        pdf.rect(x_offset, y_offset, width - (2 * inch), row_height, fill=True, stroke=False)
+        pdf.rect(
+            x_offset, y_offset, width - (2 * inch), row_height, fill=True, stroke=False
+        )
         pdf.setFillColor(black)
 
         pdf.setFont("Helvetica-Bold", 10)
@@ -454,10 +516,17 @@ async def excel_to_pdf(file: UploadFile = File(...)):
         pdf.save()
         pdf_buffer.seek(0)
 
-        return StreamingResponse(pdf_buffer, media_type='application/pdf', headers={"Content-Disposition": "attachment; filename=excel_to_pdf_output.pdf"})
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "attachment; filename=excel_to_pdf_output.pdf"
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/pdf_to_pptx/")
 async def pdf_to_pptx(file: UploadFile = File(...)):
@@ -478,48 +547,68 @@ async def pdf_to_pptx(file: UploadFile = File(...)):
 
             slide_layout = prs.slide_layouts[5]
             slide = prs.slides.add_slide(slide_layout)
-            slide.shapes.add_picture(img_buffer, Inches(0), Inches(0), width=prs.slide_width, height=prs.slide_height)
+            slide.shapes.add_picture(
+                img_buffer,
+                Inches(0),
+                Inches(0),
+                width=prs.slide_width,
+                height=prs.slide_height,
+            )
 
         prs.save(pptx_buffer)
         pptx_buffer.seek(0)
 
-        return StreamingResponse(pptx_buffer, media_type='application/vnd.openxmlformats-officedocument.presentationml.presentation', headers={"Content-Disposition": "attachment; filename=converted_presentation.pptx"})
+        return StreamingResponse(
+            pptx_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            headers={
+                "Content-Disposition": "attachment; filename=converted_presentation.pptx"
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/word_to_pdf/")
 async def word_to_pdf(file: UploadFile = File(...)):
     try:
         word_path = f"temp_{file.filename}"
-        with open(word_path, 'wb') as temp_word_file:
+        with open(word_path, "wb") as temp_word_file:
             temp_word_file.write(await file.read())
 
         pdf_path = f"{os.path.splitext(word_path)[0]}.pdf"
 
-        word_app = comtypes.client.CreateObject('Word.Application')
+        word_app = comtypes.client.CreateObject("Word.Application")
         word_app.Visible = False
         doc = word_app.Documents.Open(os.path.abspath(word_path))
         doc.SaveAs(os.path.abspath(pdf_path), FileFormat=17)
         doc.Close()
         word_app.Quit()
 
-        with open(pdf_path, 'rb') as pdf_file:
+        with open(pdf_path, "rb") as pdf_file:
             pdf_data = pdf_file.read()
 
         os.remove(word_path)
         os.remove(pdf_path)
 
-        return StreamingResponse(io.BytesIO(pdf_data), media_type='application/pdf', headers={"Content-Disposition": f'attachment; filename="{os.path.basename(pdf_path)}"'})
+        return StreamingResponse(
+            io.BytesIO(pdf_data),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{os.path.basename(pdf_path)}"'
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/pdf_to_word/")
 async def pdf_to_word(file: UploadFile = File(...)):
     try:
         pdf_path = f"temp_{file.filename}"
-        with open(pdf_path, 'wb') as temp_pdf_file:
+        with open(pdf_path, "wb") as temp_pdf_file:
             temp_pdf_file.write(await file.read())
 
         word_path = f"{os.path.splitext(pdf_path)[0]}.docx"
@@ -528,55 +617,86 @@ async def pdf_to_word(file: UploadFile = File(...)):
         cv.convert(word_path, start=0, end=None)
         cv.close()
 
-        with open(word_path, 'rb') as word_file:
+        with open(word_path, "rb") as word_file:
             word_data = word_file.read()
 
         os.remove(pdf_path)
         os.remove(word_path)
 
-        return StreamingResponse(io.BytesIO(word_data), media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document', headers={"Content-Disposition": f'attachment; filename="{os.path.basename(word_path)}"'})
+        return StreamingResponse(
+            io.BytesIO(word_data),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f'attachment; filename="{os.path.basename(word_path)}"'
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/compress_image/")
 async def compress_image(file: UploadFile = File(...)):
     try:
-        image = Image.open(await file.read())
+        file_content = await file.read()
+
+        # Wrap the bytes content in a BytesIO object
+        image = Image.open(io.BytesIO(file_content))
 
         if image.mode in ("RGBA", "P"):
             image = image.convert("RGB")
 
         compressed_image_io = io.BytesIO()
-        image.save(compressed_image_io, 'JPEG', optimize=True, quality=10)
+        image.save(compressed_image_io, "JPEG", optimize=True, quality=10)
         compressed_image_io.seek(0)
 
-        return StreamingResponse(compressed_image_io, media_type='image/jpeg', headers={"Content-Disposition": "attachment; filename=compressed_image.jpg"})
+        return StreamingResponse(
+            compressed_image_io,
+            media_type="image/jpeg",
+            headers={
+                "Content-Disposition": "attachment; filename=compressed_image.jpg"
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/compress_pptx_images/")
+
+@app.post("/compress_pptx/")
 async def compress_pptx_images(file: UploadFile = File(...)):
     try:
-        prs = Presentation(await file.read())
+        file_content = await file.read()
+
+        # Wrap the bytes content in a BytesIO object
+        prs = Presentation(io.BytesIO(file_content))
         temp_image_folder = "temp_images"
         os.makedirs(temp_image_folder, exist_ok=True)
 
         for slide in prs.slides:
             for shape in slide.shapes:
-                if shape.shape_type == 13:
-                    original_image_path = os.path.join(temp_image_folder, "original_image.jpg")
+                if shape.shape_type == 13:  # 13 corresponds to MSO_SHAPE_TYPE.PICTURE
+                    original_image_path = os.path.join(
+                        temp_image_folder, "original_image.jpg"
+                    )
                     with open(original_image_path, "wb") as f:
                         f.write(shape.image.blob)
 
-                    compressed_image_path = os.path.join(temp_image_folder, "compressed_image.jpg")
+                    compressed_image_path = os.path.join(
+                        temp_image_folder, "compressed_image.jpg"
+                    )
                     with Image.open(original_image_path) as img:
                         img.save(compressed_image_path, optimize=True, quality=50)
 
-                    left, top, width, height = shape.left, shape.top, shape.width, shape.height
+                    left, top, width, height = (
+                        shape.left,
+                        shape.top,
+                        shape.width,
+                        shape.height,
+                    )
                     slide.shapes._spTree.remove(shape._element)
-                    slide.shapes.add_picture(compressed_image_path, left, top, width, height)
+                    slide.shapes.add_picture(
+                        compressed_image_path, left, top, width, height
+                    )
 
         pptx_io = io.BytesIO()
         prs.save(pptx_io)
@@ -586,34 +706,68 @@ async def compress_pptx_images(file: UploadFile = File(...)):
             os.remove(os.path.join(temp_image_folder, filename))
         os.rmdir(temp_image_folder)
 
-        return StreamingResponse(pptx_io, media_type='application/vnd.openxmlformats-officedocument.presentationml.presentation', headers={"Content-Disposition": "attachment; filename=compressed_presentation.pptx"})
+        return StreamingResponse(
+            pptx_io,
+            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            headers={
+                "Content-Disposition": "attachment; filename=compressed_presentation.pptx"
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/pdf_to_images/")
 async def pdf_to_images(file: UploadFile = File(...)):
     try:
+        # Validate file type
+        if not file.filename.lower().endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="File must be a PDF")
+
         pdf_bytes = await file.read()
-        pdf_document = fitz.open("pdf", pdf_bytes)
+
+        # Open the PDF document
+        try:
+            pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid PDF file: {str(e)}")
 
         zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w') as zipf:
-            for i in range(len(pdf_document)):
-                page = pdf_document[i]
-                pix = page.get_pixmap()
-                img_buffer = io.BytesIO()
-                pix.save(img_buffer)
-                img_buffer.seek(0)
-                zipf.writestr(f"page_{i + 1}.png", img_buffer.getvalue())
+
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for i, page in enumerate(pdf_document):
+                try:
+                    # Get page as pixmap (image)
+                    pix = page.get_pixmap()
+
+                    # Create image in memory
+                    img_buffer = io.BytesIO()
+                    img_buffer.write(pix.tobytes(output="png"))
+                    img_buffer.seek(0)
+
+                    # Add to zip without temporary files
+                    zipf.writestr(f"page_{i + 1}.png", img_buffer.getvalue())
+                except Exception as e:
+                    # Skip page if there's an error but continue with others
+                    continue
 
         pdf_document.close()
         zip_buffer.seek(0)
 
-        return StreamingResponse(zip_buffer, media_type='application/zip', headers={"Content-Disposition": "attachment; filename=output_images.zip"})
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f"attachment; filename={file.filename.split('.')[0]}_images.zip"
+            },
+        )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
+
 
 @app.post("/images_to_pdf/")
 async def images_to_pdf(files: List[UploadFile] = File(...)):
@@ -621,31 +775,44 @@ async def images_to_pdf(files: List[UploadFile] = File(...)):
         images = []
         for file in files:
             ext = os.path.splitext(file.filename)[1].lower()
-            if ext not in ['.jpg', '.jpeg', '.png']:
-                raise HTTPException(status_code=400, detail=f"The file {file.filename} has an unsupported file extension.")
+            if ext not in [".jpg", ".jpeg", ".png"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"The file {file.filename} has an unsupported file extension.",
+                )
 
-            img = Image.open(await file.read())
+            file_content = await file.read()
+            img = Image.open(io.BytesIO(file_content))
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
             images.append(img)
 
         output_pdf = io.BytesIO()
-        images[0].save(output_pdf, save_all=True, append_images=images[1:])
+        images[0].save(
+            output_pdf, save_all=True, append_images=images[1:], format="PDF"
+        )
         output_pdf.seek(0)
 
-        return StreamingResponse(output_pdf, media_type='application/pdf', headers={"Content-Disposition": "attachment; filename=img_to_pdf.pdf"})
+        return StreamingResponse(
+            output_pdf,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=img_to_pdf.pdf"},
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/compress_docx/")
 async def compress_docx(file: UploadFile = File(...)):
     try:
-        output_stream = io.BytesIO()
-        doc = DocxDocument(await file.read())
+        file_content = await file.read()
+        initial_size = len(file_content) / 1024
 
-        initial_size = len(await file.read()) / 1024
-        await file.seek(0)
+        # Wrap the bytes content in a BytesIO object
+        doc = DocxDocument(io.BytesIO(file_content))
+
+        output_stream = io.BytesIO()
 
         for rel in doc.part.rels.values():
             if "image" in rel.target_ref:
@@ -668,72 +835,136 @@ async def compress_docx(file: UploadFile = File(...)):
             "message": "File compressed successfully.",
             "initial_size_kb": initial_size,
             "final_size_kb": final_size,
-            "compression_ratio_percent": compression_ratio
+            "compression_ratio_percent": compression_ratio,
         }
 
-        return StreamingResponse(output_stream, media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document', headers={"Content-Disposition": f'attachment; filename="compressed_{file.filename}"', "X-Message": str(response_message)})
+        return StreamingResponse(
+            output_stream,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f'attachment; filename="compressed_{file.filename}"',
+                "X-Message": str(response_message),
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/compress_excel/")
 async def compress_excel(file: UploadFile = File(...)):
     try:
+        # Check file extension
+        if not file.filename.lower().endswith((".xlsx", ".xlsm", ".xltx", ".xltm")):
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported file format. Please upload a file with extension .xlsx, .xlsm, .xltx, or .xltm.",
+            )
+
+        # Read file content
+        file_content = await file.read()
+
+        # First check if the file is a valid ZIP file (since XLSX is a ZIP archive)
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_content)) as test_zip:
+                if "xl/workbook.xml" not in test_zip.namelist():
+                    raise ValueError("Not a valid XLSX file")
+        except (zipfile.BadZipFile, ValueError) as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"The uploaded file is not a valid Excel file: {str(e)}",
+            )
+
         output_stream = io.BytesIO()
-        workbook = openpyxl.load_workbook(await file.read())
+        initial_size = len(file_content) / 1024  # Size in KB
 
-        initial_size = len(await file.read()) / 1024
-        await file.seek(0)
+        # Attempt to load the workbook
+        try:
+            workbook = openpyxl.load_workbook(io.BytesIO(file_content))
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to load the workbook. The file might be corrupted or password protected. Error: {str(e)}",
+            )
 
+        # Process images if any
+        images_processed = 0
         for sheet in workbook.worksheets:
             for image in sheet._images:
-                img_stream = io.BytesIO()
-                image.ref.save(img_stream, format="PNG")
-                img_stream.seek(0)
+                try:
+                    img_stream = io.BytesIO()
+                    image.ref.save(img_stream, format="PNG")
+                    img_stream.seek(0)
 
-                with Image.open(img_stream) as img:
-                    compressed_img_stream = io.BytesIO()
-                    img.save(compressed_img_stream, format="JPEG", quality=80)
-                    compressed_img_stream.seek(0)
+                    with Image.open(img_stream) as img:
+                        compressed_img_stream = io.BytesIO()
+                        img.save(compressed_img_stream, format="JPEG", quality=80)
+                        compressed_img_stream.seek(0)
 
-                    compressed_img = OpenpyxlImage(compressed_img_stream)
-                    compressed_img.anchor = image.anchor
-                    sheet.add_image(compressed_img)
-                    sheet._images.remove(image)
+                        compressed_img = OpenpyxlImage(compressed_img_stream)
+                        compressed_img.anchor = image.anchor
+                        sheet.add_image(compressed_img)
+                        sheet._images.remove(image)
+                        images_processed += 1
+                except Exception as e:
+                    # Skip image if there's an error processing it
+                    continue
 
         workbook.save(output_stream)
         output_stream.seek(0)
 
-        final_size = output_stream.tell() / 1024
-        compression_ratio = (1 - (final_size / initial_size)) * 100
+        final_size = output_stream.tell() / 1024  # Size in KB
+        compression_ratio = (
+            (1 - (final_size / initial_size)) * 100 if initial_size > 0 else 0
+        )
 
         response_message = {
-            "message": "File compressed successfully.",
-            "initial_size_kb": initial_size,
-            "final_size_kb": final_size,
-            "compression_ratio_percent": compression_ratio
+            "message": "File processed successfully.",
+            "initial_size_kb": round(initial_size, 2),
+            "final_size_kb": round(final_size, 2),
+            "compression_ratio_percent": round(compression_ratio, 2),
+            "images_processed": images_processed,
+            "original_filename": file.filename,
         }
 
-        return StreamingResponse(output_stream, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": f'attachment; filename="compressed_{file.filename}"', "X-Message": str(response_message)})
+        return StreamingResponse(
+            output_stream,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="compressed_{file.filename}"',
+                "X-Message": json.dumps(response_message),
+            },
+        )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500, detail=f"An unexpected error occurred: {str(e)}"
+        )
+
 
 @app.post("/compress_pdf/")
 async def compress_pdf(file: UploadFile = File(...)):
     try:
-        output_stream = io.BytesIO()
-        pdf_reader = PdfReader(await file.read())
-        original_size = len(await file.read())
-        await file.seek(0)
+        # Read the file content into a BytesIO object
+        file_content = io.BytesIO(await file.read())
+        original_size = file_content.getbuffer().nbytes
 
+        # Create a PdfReader object
+        pdf_reader = PdfReader(file_content)
+
+        # Create a PdfWriter object
         pdf_writer = PdfWriter()
 
+        # Compress each page and add it to the writer
         for page_num in range(len(pdf_reader.pages)):
             page = pdf_reader.pages[page_num]
             page.compress_content_streams()
             pdf_writer.add_page(page)
 
+        # Write the compressed PDF to an output stream
+        output_stream = io.BytesIO()
         pdf_writer.write(output_stream)
         compressed_size = output_stream.tell()
         output_stream.seek(0)
@@ -742,17 +973,23 @@ async def compress_pdf(file: UploadFile = File(...)):
             "message": "File compressed successfully.",
             "original_size_bytes": original_size,
             "compressed_size_bytes": compressed_size,
-            "size_reduced_bytes": original_size - compressed_size
+            "size_reduced_bytes": original_size - compressed_size,
         }
 
-        return StreamingResponse(output_stream, media_type='application/pdf', headers={"Content-Disposition": f'attachment; filename="compressed_{file.filename}"', "X-Message": str(response_message)})
+        return StreamingResponse(
+            output_stream,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="compressed_{file.filename}"',
+                "X-Message": str(response_message),
+            },
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=4050)
-
-
-
